@@ -17,42 +17,42 @@ jobs:
       -
         name: Checkout
         uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2
-      -
-        name: Login to Docker Hub
-        uses: docker/login-action@dd4fa0671be5250ee6f50aedf4cb05514abda2c7 # v1
-        with:
-          username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+      # -
+      #   name: Login to Docker Hub
+      #   uses: docker/login-action@dd4fa0671be5250ee6f50aedf4cb05514abda2c7 # v1
+      #   with:
+      #     username: ${{ secrets.DOCKER_HUB_USERNAME }}
+      #     password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
       -
         name: Set up Docker Buildx
         uses: docker/setup-buildx-action@f211e3e9ded2d9377c8cadc4489a4e38014bc4c9 # v1
 
       -
-        name: Build and push pan-os-php-arm
-        uses: docker/build-push-action@v2
+        name: Build pan-os-php-arm
+        uses: docker/build-push-action@ac9327eae2b366085ac7f6a2d02df8aa8ead720a # v2
         with:
           context: .
           file: docker/Dockerfile-main_arm64v8
           platforms: linux/arm64
-          push: true
+          push: false
           tags: ${{ secrets.DOCKER_HUB_USERNAME }}/pan-os-php-arm:${{ secrets.DOCKER_HUB_TAG }}
 
       -
-        name: Build and push pan-os-php-cli-arm
-        uses: docker/build-push-action@v2
+        name: Build pan-os-php-cli-arm
+        uses: docker/build-push-action@ac9327eae2b366085ac7f6a2d02df8aa8ead720a # v2
         with:
           context: .
           file: docker/Dockerfile-php_arm64v8
           platforms: linux/arm64
-          push: true
+          push: false
           tags: ${{ secrets.DOCKER_HUB_USERNAME }}/pan-os-php-cli-arm:${{ secrets.DOCKER_HUB_TAG }}
 
       -
-        name: Build and push pan-os-php-api-arm
+        name: Build pan-os-php-api-arm
         uses: docker/build-push-action@ac9327eae2b366085ac7f6a2d02df8aa8ead720a # v2
         with:
           context: .
           file: docker/Dockerfile-API_arm64v8
           platforms: linux/arm64
-          push: true
+          push: false
           tags: ${{ secrets.DOCKER_HUB_USERNAME }}/pan-os-php-api-arm:${{ secrets.DOCKER_HUB_TAG }}
