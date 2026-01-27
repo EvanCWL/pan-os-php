@@ -1957,6 +1957,518 @@ class MERGER extends UTIL
 
         }    
     }
+    
+    function address_merging_display()
+    {
+        $merge_plan = array();
+        
+        foreach( $this->location_array as $tmp_location )
+        {
+            $store = null;
+            $findLocation = null;
+            $parentStore = null;
+            $childDeviceGroups = null;
+            $this->locationSettings( $tmp_location, "Address", $store, $findLocation,$parentStore,$childDeviceGroups);
+
+            $location_name = $store->owner->name();
+            if( $location_name == "" )
+                $location_name = 'shared';
+
+            $merge_plan[$location_name] = array(
+                'child_merges' => array(),
+                'ancestor_merges' => array(),
+                'peer_merges' => array(),
+                'skipped' => array(),
+                'statistics' => array()
+            );
+
+            //
+            // Building a hash table of all address objects with same value
+            //
+            if( $this->upperLevelSearch )
+                $objectsToSearchThrough = $store->nestedPointOfView();
+            else
+                $objectsToSearchThrough = $store->addressObjects();
+
+            $hashMap = array();
+            $child_hashMap = array();
+            $child_NamehashMap = array();
+            $upperHashMap = array();
+            
+            if( $this->dupAlg == 'sameaddress' || $this->dupAlg == 'identical' )
+            {
+                // Build child device group hash maps
+                foreach( $childDeviceGroups as $dg )
+                {
+                    foreach( $dg->addressStore->addressObjects() as $object )
+                    {
+                        if( !$object->isAddress() )
+                            continue;
+                        if( !$this->mergermodeghost && $object->isTmpAddr() )
+                            continue;
+
+                        if( $this->excludeFilter !== null && $this->excludeFilter->matchSingleObject(array('object' => $object, 'nestedQueries' => &$nestedQueries)) )
+                            continue;
+
+                        $value = $this->address_get_value_string( $object );
+                        $child_hashMap[$value][] = $object;
+                        $child_NamehashMap[$object->name()][] = $object;
+                    }
+                }
+
+                // Build current level and upper level hash maps
+                foreach( $objectsToSearchThrough as $object )
+                {
+                    if( !$object->isAddress() )
+                        continue;
+                    if( !$this->mergermodeghost && $object->isTmpAddr() )
+                        continue;
+
+                    if( $this->excludeFilter !== null && $this->excludeFilter->matchSingleObject(array('object' => $object, 'nestedQueries' => &$nestedQueries)) )
+                        continue;
+
+                    $value = $this->address_get_value_string( $object );
+
+                    if( $object->owner === $store )
+                    {
+                        $hashMap[$value][] = $object;
+                        if( $parentStore !== null )
+                            $object->ancestor = self::findAncestor( $parentStore, $object, "addressStore" );
+
+                        $object->childancestor = self::findChildAncestor( $childDeviceGroups, $object, "addressStore");
+                    }
+                    else
+                        $upperHashMap[$value][] = $object;
+                }
+            }
+            elseif( $this->dupAlg == 'whereused' )
+            {
+                foreach( $objectsToSearchThrough as $object )
+                {
+                    if( !$object->isAddress() )
+                        continue;
+
+                    if( $object->countReferences() == 0 )
+                        continue;
+
+                    if( $this->excludeFilter !== null && $this->excludeFilter->matchSingleObject(array('object' => $object, 'nestedQueries' => &$nestedQueries)) )
+                        continue;
+
+                    $value = $this->address_get_value_string( $object );
+
+                    if( $object->owner === $store )
+                    {
+                        $hashMap[$value][] = $object;
+                        if( $parentStore !== null )
+                            $object->ancestor = self::findAncestor( $parentStore, $object, "addressStore" );
+
+                        $object->childancestor = self::findChildAncestor( $childDeviceGroups, $object, "addressStore");
+                    }
+                    else
+                        $upperHashMap[$value][] = $object;
+                }
+            }
+            else 
+                derr("unsupported use case");
+
+            //
+            // Remove single entries (no duplicates)
+            //
+            $countConcernedObjects = 0;
+            self::removeSingleEntries( $hashMap, $child_hashMap, $upperHashMap, $countConcernedObjects);
+
+            $countConcernedChildObjects = 0;
+            self::removeSingleEntries( $child_hashMap, $hashMap, $upperHashMap, $countConcernedChildObjects);
+
+            PH::print_stdout( " - found " . count($hashMap) . " duplicates values totalling {$countConcernedObjects} address objects which are duplicate" );
+            PH::print_stdout( " - found " . count($child_hashMap) . " duplicates childDG values totalling {$countConcernedChildObjects} address objects which are duplicate" );
+
+            //
+            // ANALYZE CHILD DEVICE GROUP MERGES
+            //
+            PH::print_stdout( "\n\nAnalyzing Child Device Group merges..." );
+            
+            foreach( $child_hashMap as $index => &$hash )
+            {
+                PH::print_stdout();
+                PH::print_stdout(" - value '{$index}'");
+
+                $pickedObject = $this->PickObject( $hash );
+                $tmp_address = $store->find($pickedObject->name());
+                
+                $merge_action = array(
+                    'value' => $index,
+                    'picked_object' => array(
+                        'name' => $pickedObject->name(),
+                        'value' => $pickedObject->value(),
+                        'type' => $pickedObject->type(),
+                        'location' => $pickedObject->owner->owner->name(),
+                        'description' => $pickedObject->description(),
+                        'tags' => $this->getTagNames($pickedObject->tags)
+                    ),
+                    'action' => '',
+                    'objects_to_remove' => array(),
+                    'reason' => ''
+                );
+
+                // Check if object needs to be created at parent level
+                if( $tmp_address == null && $this->dupAlg != 'identical' )
+                {
+                    // Check for name conflicts
+                    if( isset($child_NamehashMap[$pickedObject->name()]) )
+                    {
+                        $exit = FALSE;
+                        $exitObject = null;
+                        
+                        foreach( $child_NamehashMap[$pickedObject->name()] as $obj )
+                        {
+                            if( $obj === $pickedObject )
+                                continue;
+
+                            if( (!$obj->isType_FQDN() && !$pickedObject->isType_FQDN()) && $obj->getNetworkMask() == '32' && $pickedObject->getNetworkMask() == '32' )
+                            {
+                                if( ($obj->getNetworkMask() == $pickedObject->getNetworkMask()) && $obj->getNetworkValue() == $pickedObject->getNetworkValue() )
+                                    $exit = FALSE;
+                                else
+                                {
+                                    $exit = TRUE;
+                                    $exitObject = $obj;
+                                }
+                            }
+                            elseif( $obj->value() !== $pickedObject->value() )
+                            {
+                                $exit = TRUE;
+                                $exitObject = $obj;
+                            }
+
+                            if( isset($obj->owner->parentCentralStore) )
+                            {
+                                $tmpParentStore = $obj->owner->parentCentralStore;
+                                $tmp_obj = $tmpParentStore->find( $pickedObject->name(), null, true );
+                                if( $tmp_obj !== null )
+                                {
+                                    if( (!$tmp_obj->isType_FQDN() && !$pickedObject->isType_FQDN()) && $tmp_obj->getNetworkMask() == '32' && $pickedObject->getNetworkMask() == '32' )
+                                    {
+                                        if( ($tmp_obj->getNetworkMask() == $pickedObject->getNetworkMask()) && $tmp_obj->getNetworkValue() == $pickedObject->getNetworkValue() )
+                                            $exit = FALSE;
+                                        else
+                                        {
+                                            $exit = TRUE;
+                                            $exitObject = $tmp_obj;
+                                        }
+                                    }
+                                    elseif( $tmp_obj->value() !== $pickedObject->value() )
+                                    {
+                                        $exit = TRUE;
+                                        $exitObject = $tmp_obj;
+                                    }
+                                }
+                            }
+                        }
+
+                        if( $exit )
+                        {
+                            $merge_action['action'] = 'SKIP';
+                            $merge_action['reason'] = "Name conflict: object '{$exitObject->name()}' with different value '{$exitObject->value()}' exists at childDG/parentDG level";
+                            PH::print_stdout("   * SKIP: " . $merge_action['reason']);
+                            
+                            $merge_plan[$location_name]['skipped'][] = $merge_action;
+                            continue;
+                        }
+                    }
+
+                    $merge_action['action'] = 'CREATE_AT_PARENT';
+                    $merge_action['target_location'] = $location_name;
+                    PH::print_stdout("   * Would create object in DG: '{$location_name}' : '{$pickedObject->name()}'");
+                }
+                elseif( $tmp_address == null )
+                {
+                    $merge_action['action'] = 'SKIP';
+                    $merge_action['reason'] = "Object not found and dupAlg is 'identical'";
+                    $merge_plan[$location_name]['skipped'][] = $merge_action;
+                    continue;
+                }
+                else
+                {
+                    // Object exists at parent level
+                    $skip = false;
+                    
+                    if( $tmp_address->isAddress() && $pickedObject->isAddress() && $tmp_address->type() === $pickedObject->type() && $tmp_address->value() === $pickedObject->value() )
+                    {
+                        $merge_action['action'] = 'MERGE_TO_EXISTING';
+                        $merge_action['target_object'] = array(
+                            'name' => $tmp_address->name(),
+                            'value' => $tmp_address->value(),
+                            'type' => $tmp_address->type(),
+                            'location' => $location_name
+                        );
+                        PH::print_stdout("   * Would keep existing object '{$tmp_address->_PANC_shortName()}'");
+                    }
+                    elseif( $tmp_address->isAddress() && $pickedObject->isAddress() && $tmp_address->getNetworkValue() == $pickedObject->getNetworkValue() )
+                    {
+                        $value = $this->address_get_value_string($tmp_address);
+                        $value2 = $this->address_get_value_string($pickedObject);
+
+                        if( $value === $value2 )
+                        {
+                            $merge_action['action'] = 'MERGE_TO_EXISTING';
+                            $merge_action['target_object'] = array(
+                                'name' => $tmp_address->name(),
+                                'value' => $tmp_address->value(),
+                                'type' => $tmp_address->type(),
+                                'location' => $location_name
+                            );
+                            PH::print_stdout("   * Would keep existing object '{$tmp_address->_PANC_shortName()}'");
+                        }
+                        else
+                            $skip = true;
+                    }
+                    else
+                        $skip = true;
+
+                    if( $skip )
+                    {
+                        $merge_action['action'] = 'SKIP';
+                        $merge_action['reason'] = "Object '{$pickedObject->_PANC_shortName()}' is not IDENTICAL to existing '{$tmp_address->_PANC_shortName()}'";
+                        PH::print_stdout("   * SKIP: " . $merge_action['reason']);
+                        
+                        $merge_plan[$location_name]['skipped'][] = $merge_action;
+                        continue;
+                    }
+                }
+
+                // Analyze which objects would be removed
+                foreach( $hash as $objectIndex => $object )
+                {
+                    if( $this->dupAlg == 'identical' )
+                    {
+                        if( $merge_action['action'] == 'CREATE_AT_PARENT' )
+                            $target_name = $pickedObject->name();
+                        else
+                            $target_name = $tmp_address->name();
+                            
+                        if( $object->name() != $target_name )
+                        {
+                            PH::print_stdout("    - SKIP: object '{$object->_PANC_shortName()}' name doesn't match target");
+                            continue;
+                        }
+                    }
+
+                    // Check tag limits
+                    $target_tag_count = ($merge_action['action'] == 'CREATE_AT_PARENT') ? $pickedObject->tags->count() : $tmp_address->tags->count();
+                    
+                    if( $object->tags->count() + $target_tag_count > $object->tagLimit )
+                    {
+                        PH::print_stdout("    - SKIP: tag count would exceed PAN-OS limit " . $object->tagLimit);
+                        continue;
+                    }
+
+                    $object_info = array(
+                        'name' => $object->name(),
+                        'value' => $object->value(),
+                        'type' => $object->type(),
+                        'location' => $object->owner->owner->name(),
+                        'description' => $object->description(),
+                        'tags' => $this->getTagNames($object->tags),
+                        'reference_count' => $object->countReferences()
+                    );
+
+                    PH::print_stdout("    - Would replace and delete '{$object->_PANC_shortName()}'");
+                    $merge_action['objects_to_remove'][] = $object_info;
+                }
+
+                if( !empty($merge_action['objects_to_remove']) || $merge_action['action'] == 'CREATE_AT_PARENT' )
+                {
+                    $merge_plan[$location_name]['child_merges'][] = $merge_action;
+                }
+            }
+
+            //
+            // ANALYZE ANCESTOR MERGES AND PEER MERGES
+            //
+            PH::print_stdout( "\n\nAnalyzing Parent/Peer level merges..." );
+            
+            foreach( $hashMap as $index => &$hash )
+            {
+                PH::print_stdout();
+                PH::print_stdout( " - value '{$index}'" );
+
+                $pickedObject = $this->hashMapPickfilter( $upperHashMap, $index, $hash );
+
+                foreach( $hash as $objectIndex => $object )
+                {
+                    $merge_action = array(
+                        'value' => $index,
+                        'object' => array(
+                            'name' => $object->name(),
+                            'value' => $object->value(),
+                            'type' => $object->type(),
+                            'location' => $object->owner->owner->name(),
+                            'description' => $object->description(),
+                            'tags' => $this->getTagNames($object->tags),
+                            'reference_count' => $object->countReferences()
+                        ),
+                        'action' => '',
+                        'target' => array(),
+                        'reason' => ''
+                    );
+
+                    // Check for ancestor merge
+                    if( isset($object->ancestor) )
+                    {
+                        $ancestor = $object->ancestor;
+
+                        if( !$ancestor->isAddress() )
+                        {
+                            $merge_action['action'] = 'SKIP';
+                            $merge_action['reason'] = "Ancestor is an address group";
+                            PH::print_stdout("    - SKIP: " . $merge_action['reason']);
+                            $merge_plan[$location_name]['skipped'][] = $merge_action;
+                            continue;
+                        }
+
+                        if( $this->upperLevelSearch && !$ancestor->isGroup() && ($ancestor->isType_ipNetmask() || $ancestor->isType_ipRange() || $ancestor->isType_FQDN()) )
+                        {
+                            if( $object->getIP4Mapping()->equals($ancestor->getIP4Mapping()) || ($object->isType_FQDN() && $ancestor->isType_FQDN()) && ($object->value() == $ancestor->value()) )
+                            {
+                                if( $this->address_get_value_string($pickedObject) != $this->address_get_value_string($ancestor) )
+                                {
+                                    $merge_action['action'] = 'SKIP';
+                                    $merge_action['reason'] = "Ancestor value doesn't match picked object";
+                                    PH::print_stdout("    - SKIP: " . $merge_action['reason']);
+                                    $merge_plan[$location_name]['skipped'][] = $merge_action;
+                                    continue;
+                                }
+
+                                if( $this->dupAlg == 'identical' && $pickedObject->name() != $ancestor->name() )
+                                {
+                                    $merge_action['action'] = 'SKIP';
+                                    $merge_action['reason'] = "Names not identical (picked: '{$pickedObject->name()}', ancestor: '{$ancestor->name()}')";
+                                    PH::print_stdout("    - SKIP: " . $merge_action['reason']);
+                                    $merge_plan[$location_name]['skipped'][] = $merge_action;
+                                    continue;
+                                }
+
+                                if( $pickedObject->tags->count() + $ancestor->tags->count() > $pickedObject->tagLimit )
+                                {
+                                    $merge_action['action'] = 'SKIP';
+                                    $merge_action['reason'] = "Tag count would exceed PAN-OS limit " . $pickedObject->tagLimit;
+                                    PH::print_stdout("    - SKIP: " . $merge_action['reason']);
+                                    $merge_plan[$location_name]['skipped'][] = $merge_action;
+                                    continue;
+                                }
+
+                                $ancestor_location = isset($ancestor->owner) ? $ancestor->owner->owner->name() : 'shared';
+                                if( $ancestor_location === "" )
+                                    $ancestor_location = "shared";
+
+                                $merge_action['action'] = 'MERGE_TO_ANCESTOR';
+                                $merge_action['target'] = array(
+                                    'name' => $ancestor->name(),
+                                    'value' => $ancestor->value(),
+                                    'type' => $ancestor->type(),
+                                    'location' => $ancestor_location,
+                                    'description' => $ancestor->description(),
+                                    'tags' => $this->getTagNames($ancestor->tags)
+                                );
+
+                                PH::print_stdout("    - Would merge '{$object->name()}' to ancestor '{$ancestor->name()}' at DG '{$ancestor_location}'");
+                                $merge_plan[$location_name]['ancestor_merges'][] = $merge_action;
+                                continue;
+                            }
+                            else
+                            {
+                                $merge_action['action'] = 'SKIP';
+                                $merge_action['reason'] = "Ancestor has different value";
+                                PH::print_stdout("    - SKIP: " . $merge_action['reason']);
+                                $merge_plan[$location_name]['skipped'][] = $merge_action;
+                                continue;
+                            }
+                        }
+
+                        $merge_action['action'] = 'SKIP';
+                        $merge_action['reason'] = "Has ancestor but cannot be merged";
+                        PH::print_stdout("    - SKIP: " . $merge_action['reason']);
+                        $merge_plan[$location_name]['skipped'][] = $merge_action;
+                        continue;
+                    }
+
+                    // Check for peer merge
+                    if( $object === $pickedObject )
+                    {
+                        continue;
+                    }
+
+                    if( $this->dupAlg != 'identical' )
+                    {
+                        if( $pickedObject->isType_TMP() )
+                            continue;
+
+                        if( $object->tags->count() + $pickedObject->tags->count() > $object->tagLimit )
+                        {
+                            $merge_action['action'] = 'SKIP';
+                            $merge_action['reason'] = "Tag count would exceed PAN-OS limit " . $object->tagLimit;
+                            PH::print_stdout("    - SKIP: " . $merge_action['reason']);
+                            $merge_plan[$location_name]['skipped'][] = $merge_action;
+                            continue;
+                        }
+
+                        $merge_action['action'] = 'MERGE_TO_PEER';
+                        $merge_action['target'] = array(
+                            'name' => $pickedObject->name(),
+                            'value' => $pickedObject->value(),
+                            'type' => $pickedObject->type(),
+                            'location' => $pickedObject->owner->owner->name(),
+                            'description' => $pickedObject->description(),
+                            'tags' => $this->getTagNames($pickedObject->tags)
+                        );
+
+                        PH::print_stdout("    - Would merge '{$object->name()}' to peer '{$pickedObject->name()}'");
+                        $merge_plan[$location_name]['peer_merges'][] = $merge_action;
+                    }
+                    else
+                    {
+                        $merge_action['action'] = 'SKIP';
+                        $merge_action['reason'] = "Object name not identical to picked object";
+                        PH::print_stdout("    - SKIP: " . $merge_action['reason']);
+                        $merge_plan[$location_name]['skipped'][] = $merge_action;
+                    }
+                }
+            }
+
+            // Calculate statistics
+            $merge_plan[$location_name]['statistics'] = array(
+                'total_child_merges' => count($merge_plan[$location_name]['child_merges']),
+                'total_ancestor_merges' => count($merge_plan[$location_name]['ancestor_merges']),
+                'total_peer_merges' => count($merge_plan[$location_name]['peer_merges']),
+                'total_skipped' => count($merge_plan[$location_name]['skipped']),
+                'objects_in_location' => $store->countAddresses()
+            );
+
+            PH::print_stdout( "\n\n=== Analysis Summary for '{$location_name}' ===" );
+            PH::print_stdout( "Child merges: {$merge_plan[$location_name]['statistics']['total_child_merges']}" );
+            PH::print_stdout( "Ancestor merges: {$merge_plan[$location_name]['statistics']['total_ancestor_merges']}" );
+            PH::print_stdout( "Peer merges: {$merge_plan[$location_name]['statistics']['total_peer_merges']}" );
+            PH::print_stdout( "Skipped: {$merge_plan[$location_name]['statistics']['total_skipped']}" );
+            PH::print_stdout( "Current object count: {$merge_plan[$location_name]['statistics']['objects_in_location']}\n" );
+        }
+
+        return $merge_plan;
+    }
+
+// Helper function to extract tag names
+private function getTagNames($tagStore)
+{
+    $tags = array();
+    if( method_exists($tagStore, 'getAll') )
+    {
+        foreach( $tagStore->getAll() as $tag )
+        {
+            $tags[] = $tag->name();
+        }
+    }
+    return $tags;
+}
 
     function address_get_value_string( $object )
     {
