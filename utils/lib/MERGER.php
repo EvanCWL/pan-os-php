@@ -1634,7 +1634,7 @@ class MERGER extends UTIL
                                     }
                                 }
                             }
-                        }
+                        } 
 
                         if( $exit )
                         {
