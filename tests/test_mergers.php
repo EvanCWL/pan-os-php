@@ -98,6 +98,15 @@ foreach( $test_merger as $merger )
         $dupalgorithm_array[] = 'Identical';
         $dupalgorithm_array[] = 'Whereused';
     }
+    elseif( $merger == 'address' )
+    {
+        $util = '../utils/pan-os-php.php type=address-merger-display';
+        $dupalgorithm_array[] = 'SameMembers';
+        $dupalgorithm_array[] = 'SameIP4Mapping';
+        $dupalgorithm_array[] = 'Identical';
+        $dupalgorithm_array[] = 'Whereused';
+
+    }
     elseif( $merger == 'addressgroup' )
     {
         $util = '../utils/pan-os-php.php type=addressgroup-merger';

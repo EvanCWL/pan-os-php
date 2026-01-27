@@ -65,6 +65,7 @@ $pa_rule_edit = "rule";
 $pa_rule_stats = "stats";
 
 $pa_address_merger = "address-merger";
+$pa_address_merger_display = "address-merger-display";
 $pa_addressgroup_merger = "addressgroup-merger";
 $pa_service_merger = "service-merger";
 $pa_servicegroup_merger = "servicegroup-merger";
@@ -83,6 +84,7 @@ $command_array[] = array( $pa_migration_parser, "vendor=".$vendor, "file=".$file
 $command_array[] = array( $pa_rule_stats );
 $command_array[] = array( $pa_address_edit, "location=vsys1", "actions=display", "filter=(object is.unused.recursive)", "stats" );
 #$command_array[] = array( $pa_address_merger, "location=any", "allowmergingwithupperlevel", "shadow-ignoreInvalidAddressObjects", "stats" );
+#$command_array[] = array( $pa_address_merger_display, "location=any", "allowmergingwithupperlevel", "shadow-ignoreInvalidAddressObjects", "stats" );
 #$command_array[] = array( $pa_addressgroup_merger, "location=any", "allowmergingwithupperlevel", "shadow-ignoreInvalidAddressObjects", "stats" );
 #$command_array[] = array( $pa_service_merger, "location=any", "allowmergingwithupperlevel", "shadow-ignoreInvalidAddressObjects", "stats" );
 #$command_array[] = array( $pa_servicegroup_merger, "location=any", "allowmergingwithupperlevel", "shadow-ignoreInvalidAddressObjects", "stats" );
@@ -91,6 +93,7 @@ $command_array[] = array( $pa_address_edit, "location=vsys1", "actions=display",
 /*
 pa_address-edit  in=fixed.xml out=improved.xml location=any actions=replace-IP-by-MT-like-Object  shadow-ignoreInvalidAddressObjects 'filter=(object is.tmp)' | tee log_transform_IP_to_Object.txt
 pa_address-merger in=improved.xml out=improved.xml location=any allowmergingwithupperlevel shadow-ignoreInvalidAddressObjects | tee address-merger.txt
+pa_address-merger-display in=improved.xml out=improved.xml location=any allowmergingwithupperlevel shadow-ignoreInvalidAddressObjects | tee address-merger-display.txt
 pa_addressgroup-merger in=improved.xml out=improved.xml location=any allowmergingwithupperlevel shadow-ignoreInvalidAddressObjects | tee addressgroup-merger.txt
 pa_service-merger in=improved.xml out=improved.xml location=any allowmergingwithupperlevel shadow-ignoreInvalidAddressObjects | tee service-merger.txt
 pa_servicegroup-merger in=improved.xml out=improved.xml location=any allowmergingwithupperlevel shadow-ignoreInvalidAddressObjects | tee servicegroup-merger.txt

@@ -132,6 +132,8 @@ class MERGER extends UTIL
 
         if( $this->utilType == "address-merger" )
             $this->address_merging();
+        elseif( $this->utilType == "address-merger-display" )
+            $this->addressgroup_merging_display();
         elseif( $this->utilType == "addressgroup-merger" )
             $this->addressgroup_merging();
         elseif( $this->utilType == "service-merger" )
@@ -185,7 +187,7 @@ class MERGER extends UTIL
                     $this->locationNotFound( $objectsLocation );
                     #derr("cannot find DeviceGroup/VSYS named '{$objectsLocation}', check case or syntax");
 
-                if( $this->utilType == "address-merger" || $this->utilType == "addressgroup-merger" )
+                if( $this->utilType == "address-merger" || $this->utilType == "address-merger-display" || $this->utilType == "addressgroup-merger" )
                 {
                     $store = $findLocation->addressStore;
 
@@ -258,7 +260,7 @@ class MERGER extends UTIL
             if( !$pan->isFawkes() && !$pan->isBuckbeak() )
             {
                 $location_array[$key + 1]['findLocation'] = 'shared';
-                if( $this->utilType == "address-merger" || $this->utilType == "addressgroup-merger" )
+                if( $this->utilType == "address-merger" || $this->utilType == "address-merger-display" || $this->utilType == "addressgroup-merger" )
                     $location_array[$key + 1]['store'] = $pan->addressStore;
                 elseif( $this->utilType == "service-merger" || $this->utilType == "servicegroup-merger" )
                     $location_array[$key + 1]['store'] = $pan->serviceStore;
@@ -281,7 +283,7 @@ class MERGER extends UTIL
                 {
                     if( $objectsLocation == "shared" )
                     {
-                        if( $this->utilType == "address-merger" || $this->utilType == "addressgroup-merger" )
+                        if( $this->utilType == "address-merger" || $this->utilType == "address-merger-display" || $this->utilType == "addressgroup-merger" )
                             $store = $pan->addressStore;
                         elseif( $this->utilType == "service-merger" || $this->utilType == "servicegroup-merger" )
                             $store = $pan->serviceStore;
@@ -301,7 +303,7 @@ class MERGER extends UTIL
                         if( $findLocation === null )
                             $this->locationNotFound($objectsLocation);
 
-                        if( $this->utilType == "address-merger" || $this->utilType == "addressgroup-merger" )
+                        if( $this->utilType == "address-merger" || $this->utilType == "address-merger-display" || $this->utilType == "addressgroup-merger" )
                         {
                             $store = $findLocation->addressStore;
 
@@ -389,7 +391,7 @@ class MERGER extends UTIL
 
     function filterArgument( )
     {
-        if( $this->utilType == "address-merger" || $this->utilType == "addressgroup-merger" )
+        if( $this->utilType == "address-merger" || $this->utilType == "address-merger-display" || $this->utilType == "addressgroup-merger" )
             $type = 'address';
         elseif( $this->utilType == "service-merger" || $this->utilType == "servicegroup-merger" )
             $type = 'service';
@@ -496,6 +498,15 @@ class MERGER extends UTIL
                     "  - WhereUsed: objects used exactly in the same location will be merged into 1 single object and all ports covered by these objects will be aggregated\n",
                 'argDesc' => 'SameAddress|Identical|WhereUsed');
         }
+        elseif( $this->utilType == "address-merger-display" )
+        {
+            $this->supportedArguments[] = array('niceName' => 'DupAlgorithm',
+                'shortHelp' => "Specifies how to detect duplicates:\n" .
+                    "  - SameAddress: objects with same Network-Value will be replaced by the one picked (default)\n" .
+                    "  - Identical: objects with same network-value and same name will be replaced by the one picked\n" .
+                    "  - WhereUsed: objects used exactly in the same location will be merged into 1 single object and all ports covered by these objects will be aggregated\n",
+                'argDesc' => 'SameAddress|Identical|WhereUsed');
+        }
         elseif( $this->utilType == "addressgroup-merger" )
         {
             $this->supportedArguments[] = array('niceName' => 'DupAlgorithm',
@@ -560,6 +571,13 @@ class MERGER extends UTIL
         }
 
         if( $this->utilType == "address-merger" )
+        {
+            if( $this->dupAlg != 'sameaddress' && $this->dupAlg != 'whereused' && $this->dupAlg != 'identical' )
+                $display_error = true;
+
+            $defaultDupAlg = 'sameaddress';
+        }
+        elseif( $this->utilType == "address-merger-display" )
         {
             if( $this->dupAlg != 'sameaddress' && $this->dupAlg != 'whereused' && $this->dupAlg != 'identical' )
                 $display_error = true;

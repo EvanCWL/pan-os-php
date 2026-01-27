@@ -11,7 +11,7 @@ $supportedUTILTypes = array(
     "device", "securityprofile", "securityprofilegroup",
     "zone",  "interface", "virtualwire", "routing",
     "key-manager",
-    "address-merger", "addressgroup-merger",
+    "address-merger", "address-merger-display", "addressgroup-merger",
     "service-merger", "servicegroup-merger",
     "tag-merger",
     "rule-merger",
@@ -31,6 +31,7 @@ $supportedUTILTypes = array(
 address                    config-commit              download-predefined        license                    routing                    service                    spiffy                     traffic-log                xml-op-json
 address-merger             config-download-all        gratuitous-arp             maxmind-update             rule                       service-merger             stats                      upload                     zone
 addressgroup-merger        config-size                html-merger                override-finder            rule-merger                servicegroup-merger        system-log                 userid-mgr
+address-merger-display
 appid-enabler              device                     interface                  playbook                   schedule                   software-download          tag                        util_get-action-filter
 application                dhcp                       ironskillet-update         protocoll-number-download  securityprofile            software-preparation       tag-merger                 virtualwire
 bpa-generator              diff                       key-manager                register-ip-mgr            securityprofilegroup       software-remove            threat                     xml-issue

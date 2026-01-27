@@ -137,6 +137,7 @@ The following "RESTAPI" routes are available:
 - /key-manager
 
 - /address-merger
+- /address-merger-display
 - /addressgroup-merger
 - /service-merger
 - /servicegroup-merger

@@ -15,6 +15,10 @@ different available arguments for type=
 - **address-merger** : merge address objects together. Useful when you want to do cleaning or reduce number of objects
 because of firewall capacity problems for example. A collection of filters and algorithms will make this tool very flexible
  to bring you a tailored process for your customer.
+
+- **address-merger-display** : Display to be merged address objects together. Useful when you want to do cleaning or reduce number of objects
+because of firewall capacity problems for example. A collection of filters and algorithms will make this tool very flexible
+ to bring you a tailored process for your customer.
  
 - **addressgroup-merger** : merge address groups together. Useful when you want to do cleaning or reduce number of objects
  because of firewall capacity problems for example. A collection of filters and algorithms will make this tool very flexible

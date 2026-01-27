@@ -164,6 +164,37 @@
 					"response": []
 				},
 				{
+					"name": "address-merger-display?&help",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{SERVER}}/utils/api/{{VERSION}}/tool.php/address-merger-display?&help",
+							"host": [
+								"{{SERVER}}"
+							],
+							"path": [
+								"utils",
+								"api",
+								"{{VERSION}}",
+								"tool.php",
+								"address-merger-display"
+							],
+							"query": [
+								{
+									"key": null,
+									"value": null
+								},
+								{
+									"key": "help",
+									"value": null
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "addressgroup-merger?&help",
 					"request": {
 						"method": "GET",
@@ -339,6 +370,52 @@
 								"{{VERSION}}",
 								"tool.php",
 								"address-merger"
+							],
+							"query": [
+								{
+									"key": null,
+									"value": null
+								},
+								{
+									"key": "in",
+									"value": "{{INPUT}}"
+								},
+								{
+									"key": "location",
+									"value": "any"
+								},
+								{
+									"key": "allowmergingwithupperlevel",
+									"value": null
+								},
+								{
+									"key": "exportcsv",
+									"value": null
+								}
+							]
+						}
+					},
+					"response": []
+				},
+		{
+			"name": "merging",
+			"item": [
+				{
+					"name": "address-merger-display?&in={{INPUT}}",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{SERVER}}/utils/api/{{VERSION}}/tool.php/address-merger-display?&in={{INPUT}}&location=any&allowmergingwithupperlevel&exportcsv",
+							"host": [
+								"{{SERVER}}"
+							],
+							"path": [
+								"utils",
+								"api",
+								"{{VERSION}}",
+								"tool.php",
+								"address-merger-display"
 							],
 							"query": [
 								{

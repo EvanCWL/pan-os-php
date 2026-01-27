@@ -337,7 +337,7 @@ class UTIL
         if( isset(PH::$args['listfilters']) )
         {
             $tmp_utilType = $this->utilType;
-            if( $tmp_utilType == "address-merger" || $tmp_utilType == "addressgroup-merger"  )
+            if( $tmp_utilType == "address-merger" || $tmp_utilType == "address-merger-display" || $tmp_utilType == "addressgroup-merger"  )
                 $tmp_utilType = "address";
             elseif( $tmp_utilType == "service-merger" || $tmp_utilType == "servicegroup-merger"  )
                 $tmp_utilType = "service";

@@ -1001,6 +1001,11 @@ var subjectObject =
         "action": [],
         "filter": []
     },
+    "address-merger-display": {
+        "name": "address-merger-display",
+        "action": [],
+        "filter": []
+    },
     "addressgroup-merger": {
         "name": "addressgroup-merger",
         "action": [],

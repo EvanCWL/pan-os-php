@@ -249,6 +249,14 @@ class PanSaseAPIConnector
             $this->typeArray[] = "regions";
             $this->typeArray[] = "security-rules";
         }
+        elseif( $utilType == "address-merger-display" )
+        {
+            $this->typeArray[] = "tags";
+            $this->typeArray[] = "addresses";
+            $this->typeArray[] = "address-groups";
+            $this->typeArray[] = "regions";
+            $this->typeArray[] = "security-rules";
+        }
         elseif( $utilType == "addressgroup-merger" )
         {
             $this->typeArray[] = "tags";

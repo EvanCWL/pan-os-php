@@ -967,7 +967,7 @@ class PH
         "device", "securityprofile", "securityprofilegroup",
         "zone",  "interface", "virtualwire", "routing", "dhcp", "certificate", "static-route",
         "key-manager",
-        "address-merger", "addressgroup-merger",
+        "address-merger", "address-merger-display", "addressgroup-merger",
         "service-merger", "servicegroup-merger",
         "tag-merger",
         "rule-merger",
@@ -1070,6 +1070,7 @@ class PH
             $util = new KEYMANGER($type, $argv, $argc,$PHP_FILE." type=".$type, $_supportedArguments, $_usageMsg, $projectfolder);
 
         elseif( $type == "address-merger"
+            || $type == "address-merger-display"
             || $type == "addressgroup-merger"
             || $type == "service-merger"
             || $type == "servicegroup-merger"

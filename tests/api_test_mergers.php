@@ -129,6 +129,14 @@ foreach( $test_merger as $merger )
         $util = '../utils/pan-os-php type=address-merger';
         $dupalgorithm_array[] = '';
     }
+    elseif( $merger == 'address' )
+    {
+        $util = '../utils/pan-os-php type=address-merger-display';
+        $dupalgorithm_array[] = 'SameMembers';
+        $dupalgorithm_array[] = 'SameIP4Mapping';
+        $dupalgorithm_array[] = 'Whereused';
+
+    }
     elseif( $merger == 'addressgroup' )
     {
         $util = '../utils/pan-os-php type=addressgroup-merger';

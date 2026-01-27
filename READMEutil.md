@@ -94,6 +94,7 @@ These UTIL scripts can help to manipulate/improve PAN-OS config files or help au
 - **pan-os-php type=**
   - address
   - address-merger
+  - address-merger-display
   - addressgroup-merger
   - appid-enabler
   - application
