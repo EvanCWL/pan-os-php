@@ -4,7 +4,7 @@ FROM php:8.1-apache
 SHELL ["/bin/bash", "-c"]
 ENV DEBIAN_FRONTEND=noninteractive
 
-ENV PHP_MEMORY_LIMIT=128M
+ENV PHP_MEMORY_LIMIT=256M
 
 RUN apt-get update -y --fix-missing
 RUN apt update -y --fix-missing
