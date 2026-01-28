@@ -1,5 +1,4 @@
-FROM php:8.1-apache
-
+FROM --platform=linux/amd64 php:8.1-apache
 
 SHELL ["/bin/bash", "-c"]
 ENV DEBIAN_FRONTEND=noninteractive
