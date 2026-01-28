@@ -133,7 +133,7 @@ class MERGER extends UTIL
         if( $this->utilType == "address-merger" )
             $this->address_merging();
         elseif( $this->utilType == "address-merger-display" )
-            $this->addressgroup_merging_display();
+            $this->address_merging_display();
         elseif( $this->utilType == "addressgroup-merger" )
             $this->addressgroup_merging();
         elseif( $this->utilType == "service-merger" )
