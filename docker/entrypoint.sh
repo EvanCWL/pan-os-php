@@ -5,7 +5,7 @@
 
 if [[ -z $@ ]]
 then
-    exec php -r "require_once('/tools/pan-os-php/utils/pan-os-php.php');" "$@"
-else
     exec /bin/bash
+else
+    exec php -r "require_once('/tools/pan-os-php/utils/pan-os-php.php');" "$@"
 fi
