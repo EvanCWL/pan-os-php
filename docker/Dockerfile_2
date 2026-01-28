@@ -1,0 +1,104 @@
+# syntax=docker/dockerfile:1
+
+ARG TARGETPLATFORM
+ARG BUILDPLATFORM
+ARG MODE=cli
+
+FROM --platform=$TARGETPLATFORM ubuntu:22.04
+
+ARG TARGETPLATFORM
+ARG BUILDPLATFORM
+ARG TARGETARCH
+ARG MODE=cli
+ARG php_var="8.1"
+ARG user_var="root"
+
+SHELL ["/bin/bash", "-c"]
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Base system updates
+RUN apt-get update --fix-missing && \
+    apt update --fix-missing && \
+    apt install -y --fix-missing \
+    tzdata \
+    git \
+    bash-completion \
+    apache2 \
+    libapache2-mod-php$php_var \
+    php$php_var \
+    php$php_var-cli \
+    php$php_var-curl \
+    php$php_var-dom \
+    php$php_var-mbstring \
+    php$php_var-bcmath \
+    php$php_var-yaml \
+    php$php_var-mysql \
+    python3 \
+    python3-pandas \
+    python3-xlsxwriter \
+    python3-netaddr \
+    python3-requests \
+    jq && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Copy application files
+WORKDIR /tools/pan-os-php
+
+COPY appid-toolbox ./appid-toolbox
+COPY lib ./lib
+COPY phpseclib ./phpseclib
+COPY git-php ./git-php
+COPY utils ./utils
+COPY tests ./tests
+COPY iron-skillet ./iron-skillet
+COPY migration ./migration
+
+# PHP library configuration for CLI
+RUN echo 'include_path = "/usr/share/php:/tools/pan-os-php"' >> /etc/php/$php_var/cli/php.ini && \
+    chmod -R 777 /tools/pan-os-php
+
+# CLI utilities (bash completion and aliases)
+RUN cat /tools/pan-os-php/utils/alias.sh >> /$user_var/.bashrc && \
+    cat /tools/pan-os-php/utils/bash_autocompletion/enable_bash.txt >> /$user_var/.bashrc && \
+    ln -s /tools/pan-os-php/utils/bash_autocompletion/pan-os-php.sh /usr/share/bash-completion/completions/pan-os-php
+
+# API-specific setup (conditional)
+RUN if [ "$MODE" = "api" ]; then \
+    # Setup Apache document root
+    rm -rf /var/www/html && \
+    ln -s /tools/pan-os-php /var/www/html && \
+    # PHP configuration for Apache
+    echo 'include_path = "/usr/share/php:/tools/pan-os-php"' >> /etc/php/$php_var/apache2/php.ini && \
+    # Upload configuration
+    touch /etc/php/$php_var/apache2/conf.d/uploads.ini && \
+    echo "file_uploads = On;" >> /etc/php/$php_var/apache2/conf.d/uploads.ini && \
+    echo "memory_limit = 500M;" >> /etc/php/$php_var/apache2/conf.d/uploads.ini && \
+    echo "upload_max_filesize = 500M;" >> /etc/php/$php_var/apache2/conf.d/uploads.ini && \
+    echo "post_max_size = 500M;" >> /etc/php/$php_var/apache2/conf.d/uploads.ini && \
+    echo "max_execution_time = 600;" >> /etc/php/$php_var/apache2/conf.d/uploads.ini && \
+    # API directory permissions
+    chmod -R 777 /tools/pan-os-php/utils/api/v1/project && \
+    mkdir -p /tools/pan-os-php/log && \
+    chmod -R 777 /tools/pan-os-php/log && \
+    # Enable Apache modules
+    a2enmod rewrite && \
+    a2enmod php$php_var; \
+    fi
+
+# Git configuration
+RUN git config --global user.email=test@test.com user.name=test
+
+# Entrypoint script
+WORKDIR /scripts
+COPY docker/entrypoint.sh .
+RUN chmod +x entrypoint.sh && sed -i 's/\r$//' entrypoint.sh
+
+# Working dir for the app
+VOLUME /share
+WORKDIR /share
+
+EXPOSE 80
+
+ENTRYPOINT ["/bin/bash", "/scripts/entrypoint.sh"]
